@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HRPulse</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Segoe UI', sans-serif; background: #0f1117; color: #e2e8f0; display: flex; height: 100vh; overflow: hidden; }
+
+  /* SIDEBAR */
+  .sidebar { width: 220px; background: #161b27; border-right: 1px solid #1e2535; display: flex; flex-direction: column; padding: 24px 0; flex-shrink: 0; }
+  .logo { padding: 0 20px 28px; font-size: 22px; font-weight: 800; color: #fff; letter-spacing: -0.5px; }
+  .logo span { color: #6366f1; }
+  .nav-item { display: flex; align-items: center; gap: 12px; padding: 11px 20px; cursor: pointer; color: #94a3b8; font-size: 14px; font-weight: 500; border-left: 3px solid transparent; transition: all .2s; }
+  .nav-item:hover { background: #1e2535; color: #e2e8f0; }
+  .nav-item.active { background: #1e2535; color: #fff; border-left-color: #6366f1; }
+  .nav-item svg { width: 18px; height: 18px; flex-shrink: 0; }
+
+  /* MAIN */
+  .main { flex: 1; overflow-y: auto; padding: 32px; }
+  .page { display: none; }
+  .page.active { display: block; }
+  h1 { font-size: 24px; font-weight: 700; margin-bottom: 24px; color: #fff; }
+
+  /* CARDS */
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 24px; }
+  .card { background: #161b27; border: 1px solid #1e2535; border-radius: 12px; padding: 20px; }
+  .card-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .08em; color: #64748b; margin-bottom: 10px; }
+  .card-value { font-size: 32px; font-weight: 800; color: #fff; margin-bottom: 4px; }
+  .card-sub { font-size: 12px; color: #64748b; }
+  .bar { height: 4px; border-radius: 2px; margin-bottom: 10px; }
+  .bar.green { background: #22c55e; }
+  .bar.blue { background: #6366f1; }
+  .bar.yellow { background: #eab308; }
+  .bar.cyan { background: #06b6d4; }
+
+  /* QUICK REGISTER */
+  .quick-box { background: linear-gradient(135deg, #1e2535, #1a2040); border: 1px solid #2d3748; border-radius: 12px; padding: 20px 24px; display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
+  .quick-box h2 { font-size: 16px; font-weight: 700; margin-bottom: 4px; }
+  .quick-box p { font-size: 13px; color: #64748b; }
+  .btn-green { background: #22c55e; color: #fff; border: none; padding: 10px 22px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; transition: background .2s; }
+  .btn-green:hover { background: #16a34a; }
+  .btn-primary { background: #6366f1; color: #fff; border: none; padding: 10px 22px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; transition: background .2s; }
+  .btn-primary:hover { background: #4f46e5; }
+  .btn-danger { background: #ef4444; color: #fff; border: none; padding: 6px 14px; border-radius: 6px; font-size: 13px; cursor: pointer; }
+  .btn-sm { padding: 6px 14px; font-size: 13px; border-radius: 6px; border: none; cursor: pointer; font-weight: 500; }
+  .btn-edit { background: #1e2535; color: #94a3b8; }
+  .btn-edit:hover { background: #2d3748; color: #fff; }
+
+  /* TABLE */
+  .table-wrap { background: #161b27; border: 1px solid #1e2535; border-radius: 12px; overflow: hidden; }
+  table { width: 100%; border-collapse: collapse; }
+  th { padding: 12px 16px; text-align: left; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .08em; color: #64748b; background: #1a1f2e; border-bottom: 1px solid #1e2535; }
+  td { padding: 12px 16px; font-size: 14px; border-bottom: 1px solid #1a1f2e; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: #1a1f2e; }
+
+  /* BADGE */
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+  .badge-green { background: #14532d; color: #4ade80; }
+  .badge-red { background: #7f1d1d; color: #f87171; }
+  .badge-yellow { background: #713f12; color: #fbbf24; }
+
+  /* MODAL */
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.6); display: flex; align-items: center; justify-content: center; z-index: 100; }
+  .modal-overlay.hidden { display: none; }
+  .modal { background: #161b27; border: 1px solid #2d3748; border-radius: 16px; padding: 28px; width: 420px; max-width: 95vw; }
+  .modal h2 { font-size: 18px; font-weight: 700; margin-bottom: 20px; }
+  .form-group { margin-bottom: 14px; }
+  .form-group label { display: block; font-size: 12px; font-weight: 600; color: #94a3b8; margin-bottom: 6px; text-transform: uppercase; letter-spacing: .05em; }
+  .form-group input, .form-group select { width: 100%; background: #0f1117; border: 1px solid #2d3748; border-radius: 8px; padding: 9px 12px; font-size: 14px; color: #e2e8f0; outline: none; }
+  .form-group input:focus, .form-group select:focus { border-color: #6366f1; }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .modal-footer { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+  .btn-cancel { background: #1e2535; color: #94a3b8; border: none; padding: 10px 20px; border-radius: 8px; font-size: 14px; cursor: pointer; }
+  .btn-cancel:hover { background: #2d3748; }
+
+  /* MODAL LLEGADA */
+  .emp-list { max-height: 360px; overflow-y: auto; margin-bottom: 16px; }
+  .emp-sector-header { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: #6366f1; padding: 12px 12px 6px; border-bottom: 1px solid #1e2535; margin-bottom: 4px; }
+  .emp-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; border-radius: 8px; cursor: pointer; transition: background .15s; }
+  .emp-row:hover { background: #1e2535; }
+  .emp-row.selected { background: #1e2535; border: 1px solid #6366f1; }
+  .emp-name { font-size: 14px; font-weight: 600; }
+  .emp-sub { font-size: 12px; color: #64748b; }
+
+  /* FILTERS */
+  .filters { display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
+  .filters input, .filters select { background: #161b27; border: 1px solid #1e2535; border-radius: 8px; padding: 8px 12px; font-size: 13px; color: #e2e8f0; outline: none; }
+  .filters input:focus, .filters select:focus { border-color: #6366f1; }
+
+  /* STATS */
+  .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 24px; }
+  .stat-box { background: #161b27; border: 1px solid #1e2535; border-radius: 12px; padding: 20px; }
+  .stat-box h3 { font-size: 14px; font-weight: 600; color: #94a3b8; margin-bottom: 16px; }
+  .chart-bar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .chart-bar-label { font-size: 12px; color: #94a3b8; width: 80px; flex-shrink: 0; }
+  .chart-bar-bg { flex: 1; background: #1e2535; border-radius: 4px; height: 8px; }
+  .chart-bar-fill { height: 8px; border-radius: 4px; background: #6366f1; transition: width .4s; }
+  .chart-bar-val { font-size: 12px; color: #94a3b8; width: 30px; text-align: right; }
+  .pie-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .pie-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .pie-label { font-size: 13px; flex: 1; }
+  .pie-val { font-size: 13px; font-weight: 600; }
+  .range-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #1e2535; }
+  .range-row:last-child { border-bottom: none; }
+  .range-label { font-size: 13px; color: #94a3b8; }
+  .range-val { font-size: 16px; font-weight: 700; color: #fff; }
+
+  .empty { text-align: center; padding: 48px; color: #475569; }
+  .empty svg { width: 40px; height: 40px; margin: 0 auto 12px; display: block; opacity: .4; }
+
+  select option { background: #161b27; }
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<div class="sidebar">
+  <div class="logo">HR<span>Pulse</span></div>
+  <div class="nav-item active" onclick="goTo('dashboard')">
+    <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+    Dashboard
+  </div>
+  <div class="nav-item" onclick="goTo('empleados')">
+    <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+    Empleados
+  </div>
+  <div class="nav-item" onclick="goTo('historial')">
+    <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+    Historial
+  </div>
+  <div class="nav-item" onclick="goTo('estadisticas')">
+    <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+    Estadísticas
+  </div>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+
+  <!-- DASHBOARD -->
+  <div id="page-dashboard" class="page active">
+    <h1>Dashboard</h1>
+    <div class="quick-box">
+      <div>
+        <h2>⚡ Registrar llegada rápida</h2>
+        <p>Marcá la llegada de un empleado con la hora actual</p>
+      </div>
+      <button class="btn-green" onclick="openLlegada()">→ Llegó ahora</button>
+    </div>
+    <div class="cards">
+      <div class="card"><div class="bar green"></div><div class="card-label">Empleados Activos</div><div class="card-value" id="stat-total">0</div><div class="card-sub">registrados en el sistema</div></div>
+      <div class="card"><div class="bar blue"></div><div class="card-label">Llegadas Hoy</div><div class="card-value" id="stat-hoy">0</div><div class="card-sub">registros de hoy</div></div>
+      <div class="card"><div class="bar yellow"></div><div class="card-label">Puntualidad Hoy</div><div class="card-value" id="stat-puntual-hoy">—</div><div class="card-sub">a tiempo vs tardanzas</div></div>
+      <div class="card"><div class="bar cyan"></div><div class="card-label">Puntualidad Mes</div><div class="card-value" id="stat-puntual-mes">—</div><div class="card-sub">del mes en curso</div></div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Empleado</th><th>Sector</th><th>Hora llegada</th><th>Estado</th></tr></thead>
+        <tbody id="tabla-ultimas"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- EMPLEADOS -->
+  <div id="page-empleados" class="page">
+    <h1>Empleados</h1>
+    <div style="margin-bottom:20px">
+      <button class="btn-primary" onclick="openModalEmp()">+ Nuevo empleado</button>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Nombre</th><th>Sector</th><th>Puesto</th><th>Horario</th><th>Tolerancia</th><th>Acciones</th></tr></thead>
+        <tbody id="tabla-empleados"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- HISTORIAL -->
+  <div id="page-historial" class="page">
+    <h1>Historial</h1>
+    <div class="filters">
+      <input type="date" id="filtro-fecha" onchange="renderHistorial()">
+      <select id="filtro-emp" onchange="renderHistorial()"><option value="">Todos los empleados</option></select>
+      <select id="filtro-estado" onchange="renderHistorial()">
+        <option value="">Todos los estados</option>
+        <option value="puntual">Puntual</option>
+        <option value="tardanza">Tardanza</option>
+      </select>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Empleado</th><th>Sector</th><th>Fecha</th><th>Hora llegada</th><th>Horario</th><th>Estado</th><th>Minutos tarde</th></tr></thead>
+        <tbody id="tabla-historial"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ESTADÍSTICAS -->
+  <div id="page-estadisticas" class="page">
+    <h1>Estadísticas</h1>
+    <div class="filters">
+      <select id="filtro-periodo" onchange="renderEstadisticas()">
+        <option value="semana">Esta semana</option>
+        <option value="mes" selected>Este mes</option>
+        <option value="todo">Todo el tiempo</option>
+      </select>
+    </div>
+    <div class="stats-grid">
+      <div class="stat-box">
+        <h3>Puntualidad general</h3>
+        <div id="pie-puntualidad"></div>
+      </div>
+      <div class="stat-box">
+        <h3>Rangos de tardanza (minutos)</h3>
+        <div id="rangos-tardanza"></div>
+      </div>
+      <div class="stat-box">
+        <h3>Llegadas por día de semana</h3>
+        <div id="barras-dia"></div>
+      </div>
+      <div class="stat-box">
+        <h3>Ranking de puntualidad por empleado</h3>
+        <div id="ranking-emp"></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- MODAL EMPLEADO -->
+<div class="modal-overlay hidden" id="modal-emp">
+  <div class="modal">
+    <h2 id="modal-emp-titulo">Nuevo empleado</h2>
+    <div class="form-group"><label>Nombre completo</label><input id="emp-nombre" type="text" placeholder="Ej: Juan Pérez"></div>
+    <div class="form-row">
+      <div class="form-group"><label>Sector</label><input id="emp-sector" type="text" placeholder="Ej: Ventas"></div>
+      <div class="form-group"><label>Puesto</label><input id="emp-puesto" type="text" placeholder="Ej: Vendedor"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Horario entrada</label><input id="emp-horario" type="time" value="09:00"></div>
+      <div class="form-group"><label>Tolerancia (min)</label><input id="emp-tolerancia" type="number" value="10" min="0" max="60"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeModalEmp()">Cancelar</button>
+      <button class="btn-primary" onclick="guardarEmp()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL LLEGADA -->
+<div class="modal-overlay hidden" id="modal-llegada">
+  <div class="modal">
+    <h2>Registrar llegada</h2>
+    <p style="font-size:13px;color:#64748b;margin-bottom:16px">Seleccioná el empleado que llegó. Hora actual: <strong id="hora-actual"></strong></p>
+    <div class="emp-list" id="lista-emp-llegada"></div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeModalLlegada()">Cancelar</button>
+      <button class="btn-primary" onclick="confirmarLlegada()">Confirmar llegada</button>
+    </div>
+  </div>
+</div>
+
+<!-- FIREBASE -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+  import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, deleteDoc, query, orderBy } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyDipT6nsu0rIZmU0eJWgrXl6qMtKoQzjUg",
+    authDomain: "hrpulse-18095.firebaseapp.com",
+    projectId: "hrpulse-18095",
+    storageBucket: "hrpulse-18095.firebasestorage.app",
+    messagingSenderId: "331141184570",
+    appId: "1:331141184570:web:232d7a5bd9ba0f0af14903",
+    measurementId: "G-4CH96NQLMX"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+
+  // STATE
+  let empleados = [];
+  let registros = [];
+  let empEditId = null;
+  let empSelLlegada = null;
+
+  // LOAD
+  async function cargarDatos() {
+    const qe = await getDocs(collection(db, "empleados"));
+    empleados = qe.docs.map(d => ({ id: d.id, ...d.data() }));
+    const qr = await getDocs(query(collection(db, "registros"), orderBy("timestamp", "desc")));
+    registros = qr.docs.map(d => ({ id: d.id, ...d.data() }));
+    renderAll();
+  }
+
+  function renderAll() {
+    renderDashboard();
+    renderEmpleados();
+    renderHistorial();
+    renderEstadisticas();
+    renderFiltroEmp();
+  }
+
+  // NAVEGACIÓN
+  window.goTo = function(page) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    document.getElementById('page-' + page).classList.add('active');
+    const items = document.querySelectorAll('.nav-item');
+    const idx = { dashboard: 0, empleados: 1, historial: 2, estadisticas: 3 };
+    items[idx[page]].classList.add('active');
+    if (page === 'estadisticas') renderEstadisticas();
+  };
+
+  // DASHBOARD
+  function renderDashboard() {
+    document.getElementById('stat-total').textContent = empleados.length;
+    const hoy = hoyStr();
+    const regsHoy = registros.filter(r => r.fecha === hoy);
+    document.getElementById('stat-hoy').textContent = regsHoy.length;
+
+    const puntualesHoy = regsHoy.filter(r => r.estado === 'puntual').length;
+    const tardasHoy = regsHoy.filter(r => r.estado === 'tardanza').length;
+    document.getElementById('stat-puntual-hoy').textContent = regsHoy.length ? `${Math.round(puntualesHoy/regsHoy.length*100)}%` : '—';
+
+    const mes = hoy.slice(0,7);
+    const regsMes = registros.filter(r => r.fecha && r.fecha.startsWith(mes));
+    const puntualesMes = regsMes.filter(r => r.estado === 'puntual').length;
+    document.getElementById('stat-puntual-mes').textContent = regsMes.length ? `${Math.round(puntualesMes/regsMes.length*100)}%` : '—';
+
+    const tbody = document.getElementById('tabla-ultimas');
+    const ultimas = registros.slice(0, 10);
+    tbody.innerHTML = ultimas.length ? ultimas.map(r => `
+      <tr>
+        <td>${r.nombreEmp || '—'}</td>
+        <td>${r.sectorEmp || '—'}</td>
+        <td>${r.horaLlegada || '—'}</td>
+        <td>${badgeEstado(r.estado)}</td>
+      </tr>`).join('') : `<tr><td colspan="4"><div class="empty"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Sin registros aún</div></td></tr>`;
+  }
+
+  // EMPLEADOS
+  function renderEmpleados() {
+    const tbody = document.getElementById('tabla-empleados');
+    tbody.innerHTML = empleados.length ? empleados.map(e => `
+      <tr>
+        <td>${e.nombre}</td>
+        <td>${e.sector}</td>
+        <td>${e.puesto}</td>
+        <td>${e.horario}</td>
+        <td>${e.tolerancia} min</td>
+        <td style="display:flex;gap:8px">
+          <button class="btn-sm btn-edit" onclick="editarEmp('${e.id}')">Editar</button>
+          <button class="btn-sm btn-danger" onclick="eliminarEmp('${e.id}')">Eliminar</button>
+        </td>
+      </tr>`).join('') : `<tr><td colspan="6"><div class="empty">No hay empleados cargados</div></td></tr>`;
+  }
+
+  window.openModalEmp = function() {
+    empEditId = null;
+    document.getElementById('modal-emp-titulo').textContent = 'Nuevo empleado';
+    document.getElementById('emp-nombre').value = '';
+    document.getElementById('emp-sector').value = '';
+    document.getElementById('emp-puesto').value = '';
+    document.getElementById('emp-horario').value = '09:00';
+    document.getElementById('emp-tolerancia').value = '10';
+    document.getElementById('modal-emp').classList.remove('hidden');
+  };
+
+  window.closeModalEmp = function() {
+    document.getElementById('modal-emp').classList.add('hidden');
+  };
+
+  window.editarEmp = function(id) {
+    const e = empleados.find(x => x.id === id);
+    if (!e) return;
+    empEditId = id;
+    document.getElementById('modal-emp-titulo').textContent = 'Editar empleado';
+    document.getElementById('emp-nombre').value = e.nombre;
+    document.getElementById('emp-sector').value = e.sector;
+    document.getElementById('emp-puesto').value = e.puesto;
+    document.getElementById('emp-horario').value = e.horario;
+    document.getElementById('emp-tolerancia').value = e.tolerancia;
+    document.getElementById('modal-emp').classList.remove('hidden');
+  };
+
+  window.guardarEmp = async function() {
+    const data = {
+      nombre: document.getElementById('emp-nombre').value.trim(),
+      sector: document.getElementById('emp-sector').value.trim(),
+      puesto: document.getElementById('emp-puesto').value.trim(),
+      horario: document.getElementById('emp-horario').value,
+      tolerancia: parseInt(document.getElementById('emp-tolerancia').value) || 10,
+    };
+    if (!data.nombre) { alert('El nombre es obligatorio'); return; }
+    if (empEditId) {
+      await updateDoc(doc(db, 'empleados', empEditId), data);
+    } else {
+      await addDoc(collection(db, 'empleados'), data);
+    }
+    closeModalEmp();
+    await cargarDatos();
+  };
+
+  window.eliminarEmp = async function(id) {
+    if (!confirm('¿Eliminar este empleado?')) return;
+    await deleteDoc(doc(db, 'empleados', id));
+    await cargarDatos();
+  };
+
+  // LLEGADA
+  window.openLlegada = function() {
+    empSelLlegada = null;
+    const now = new Date();
+    document.getElementById('hora-actual').textContent = now.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
+    const lista = document.getElementById('lista-emp-llegada');
+    if (!empleados.length) {
+      lista.innerHTML = '<p style="color:#64748b;text-align:center;padding:20px">No hay empleados cargados</p>';
+    } else {
+      // Agrupar por sector
+      const sectores = {};
+      empleados.forEach(e => {
+        const s = e.sector || 'Sin sector';
+        if (!sectores[s]) sectores[s] = [];
+        sectores[s].push(e);
+      });
+      lista.innerHTML = Object.keys(sectores).sort().map(sector => `
+        <div class="emp-sector-header">${sector}</div>
+        ${sectores[sector].map(e => `
+          <div class="emp-row" id="emprow-${e.id}" onclick="selEmp('${e.id}')">
+            <div><div class="emp-name">${e.nombre}</div><div class="emp-sub">${e.puesto}</div></div>
+            <div style="font-size:12px;color:#64748b">${e.horario}</div>
+          </div>`).join('')}
+      `).join('');
+    }
+    document.getElementById('modal-llegada').classList.remove('hidden');
+  };
+
+  window.closeModalLlegada = function() {
+    document.getElementById('modal-llegada').classList.add('hidden');
+  };
+
+  window.selEmp = function(id) {
+    empSelLlegada = id;
+    document.querySelectorAll('.emp-row').forEach(r => r.classList.remove('selected'));
+    const el = document.getElementById('emprow-' + id);
+    if (el) el.classList.add('selected');
+  };
+
+  window.confirmarLlegada = async function() {
+    if (!empSelLlegada) { alert('Seleccioná un empleado'); return; }
+    const emp = empleados.find(e => e.id === empSelLlegada);
+    if (!emp) return;
+    const now = new Date();
+    const horaLlegada = now.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
+    const fecha = hoyStr();
+    const [hE, mE] = emp.horario.split(':').map(Number);
+    const minHorario = hE * 60 + mE;
+    const minLlegada = now.getHours() * 60 + now.getMinutes();
+    const diff = minLlegada - minHorario;
+    const estado = diff <= emp.tolerancia ? 'puntual' : 'tardanza';
+    const minutosTarde = Math.max(0, diff);
+    await addDoc(collection(db, 'registros'), {
+      empId: emp.id, nombreEmp: emp.nombre, sectorEmp: emp.sector,
+      horario: emp.horario, horaLlegada, fecha, estado, minutosTarde,
+      timestamp: now.toISOString()
+    });
+    closeModalLlegada();
+    await cargarDatos();
+  };
+
+  // HISTORIAL
+  function renderFiltroEmp() {
+    const sel = document.getElementById('filtro-emp');
+    const val = sel.value;
+    sel.innerHTML = '<option value="">Todos los empleados</option>' + empleados.map(e => `<option value="${e.id}">${e.nombre}</option>`).join('');
+    sel.value = val;
+  }
+
+  window.renderHistorial = function() {
+    const fecha = document.getElementById('filtro-fecha').value;
+    const empId = document.getElementById('filtro-emp').value;
+    const estado = document.getElementById('filtro-estado').value;
+    let regs = [...registros];
+    if (fecha) regs = regs.filter(r => r.fecha === fecha);
+    if (empId) regs = regs.filter(r => r.empId === empId);
+    if (estado) regs = regs.filter(r => r.estado === estado);
+    const tbody = document.getElementById('tabla-historial');
+    tbody.innerHTML = regs.length ? regs.map(r => `
+      <tr>
+        <td>${r.nombreEmp}</td>
+        <td>${r.sectorEmp || '—'}</td>
+        <td>${r.fecha}</td>
+        <td>${r.horaLlegada}</td>
+        <td>${r.horario}</td>
+        <td>${badgeEstado(r.estado)}</td>
+        <td>${r.estado === 'tardanza' ? r.minutosTarde + ' min' : '—'}</td>
+      </tr>`).join('') : `<tr><td colspan="7"><div class="empty">Sin registros</div></td></tr>`;
+  };
+
+  // ESTADÍSTICAS
+  window.renderEstadisticas = function() {
+    const periodo = document.getElementById('filtro-periodo').value;
+    const hoy = new Date();
+    let regs = [...registros];
+    if (periodo === 'semana') {
+      const lunes = new Date(hoy); lunes.setDate(hoy.getDate() - hoy.getDay() + 1);
+      regs = regs.filter(r => r.fecha >= lunes.toISOString().slice(0,10));
+    } else if (periodo === 'mes') {
+      const mes = hoy.toISOString().slice(0,7);
+      regs = regs.filter(r => r.fecha && r.fecha.startsWith(mes));
+    }
+
+    // Puntualidad
+    const puntuales = regs.filter(r => r.estado === 'puntual').length;
+    const tardanzas = regs.filter(r => r.estado === 'tardanza').length;
+    const total = regs.length;
+    document.getElementById('pie-puntualidad').innerHTML = total ? `
+      <div class="pie-row"><div class="pie-dot" style="background:#22c55e"></div><div class="pie-label">Puntual</div><div class="pie-val">${puntuales} (${Math.round(puntuales/total*100)}%)</div></div>
+      <div class="pie-row"><div class="pie-dot" style="background:#ef4444"></div><div class="pie-label">Tardanza</div><div class="pie-val">${tardanzas} (${Math.round(tardanzas/total*100)}%)</div></div>
+      <div style="margin-top:12px;background:#1e2535;border-radius:8px;height:12px;overflow:hidden">
+        <div style="background:#22c55e;height:100%;width:${Math.round(puntuales/total*100)}%;transition:width .4s"></div>
+      </div>` : '<p style="color:#475569">Sin datos</p>';
+
+    // Rangos
+    const tardos = regs.filter(r => r.estado === 'tardanza');
+    const r1 = tardos.filter(r => r.minutosTarde <= 10).length;
+    const r2 = tardos.filter(r => r.minutosTarde > 10 && r.minutosTarde <= 20).length;
+    const r3 = tardos.filter(r => r.minutosTarde > 20 && r.minutosTarde <= 30).length;
+    const r4 = tardos.filter(r => r.minutosTarde > 30).length;
+    document.getElementById('rangos-tardanza').innerHTML = `
+      <div class="range-row"><span class="range-label">1–10 min</span><span class="range-val">${r1}</span></div>
+      <div class="range-row"><span class="range-label">11–20 min</span><span class="range-val">${r2}</span></div>
+      <div class="range-row"><span class="range-label">21–30 min</span><span class="range-val">${r3}</span></div>
+      <div class="range-row"><span class="range-label">+30 min</span><span class="range-val">${r4}</span></div>`;
+
+    // Por día
+    const dias = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+    const porDia = [0,0,0,0,0,0,0];
+    regs.forEach(r => { if (r.fecha) { const d = new Date(r.fecha + 'T12:00:00'); porDia[d.getDay()]++; } });
+    const maxDia = Math.max(...porDia, 1);
+    document.getElementById('barras-dia').innerHTML = dias.map((d,i) => `
+      <div class="chart-bar-row">
+        <div class="chart-bar-label">${d}</div>
+        <div class="chart-bar-bg"><div class="chart-bar-fill" style="width:${Math.round(porDia[i]/maxDia*100)}%"></div></div>
+        <div class="chart-bar-val">${porDia[i]}</div>
+      </div>`).join('');
+
+    // Ranking
+    const empStats = empleados.map(e => {
+      const suyos = regs.filter(r => r.empId === e.id);
+      const punt = suyos.filter(r => r.estado === 'puntual').length;
+      return { nombre: e.nombre, total: suyos.length, punt, pct: suyos.length ? Math.round(punt/suyos.length*100) : 0 };
+    }).sort((a,b) => b.pct - a.pct);
+    const maxPct = Math.max(...empStats.map(e => e.pct), 1);
+    document.getElementById('ranking-emp').innerHTML = empStats.length ? empStats.map(e => `
+      <div class="chart-bar-row">
+        <div class="chart-bar-label" style="width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${e.nombre}">${e.nombre.split(' ')[0]}</div>
+        <div class="chart-bar-bg"><div class="chart-bar-fill" style="width:${e.pct}%;background:${e.pct>=80?'#22c55e':e.pct>=50?'#eab308':'#ef4444'}"></div></div>
+        <div class="chart-bar-val">${e.pct}%</div>
+      </div>`).join('') : '<p style="color:#475569">Sin datos</p>';
+  };
+
+  // UTILS
+  function hoyStr() { return new Date().toISOString().slice(0,10); }
+  function badgeEstado(e) {
+    if (e === 'puntual') return '<span class="badge badge-green">Puntual</span>';
+    if (e === 'tardanza') return '<span class="badge badge-red">Tardanza</span>';
+    return '<span class="badge badge-yellow">—</span>';
+  }
+
+  cargarDatos();
+</script>
+</body>
+</html>
