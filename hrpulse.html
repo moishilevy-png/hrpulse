@@ -254,7 +254,11 @@
 <div class="modal-overlay hidden" id="modal-llegada">
   <div class="modal">
     <h2>Registrar llegada</h2>
-    <p style="font-size:13px;color:#64748b;margin-bottom:16px">Seleccioná el empleado que llegó. Hora actual: <strong id="hora-actual"></strong></p>
+    <p style="font-size:13px;color:#64748b;margin-bottom:16px">Seleccioná el empleado y confirmá la hora de llegada.</p>
+    <div class="form-group" style="margin-bottom:16px">
+      <label>Hora de llegada</label>
+      <input id="hora-llegada-input" type="time" style="width:100%;background:#0f1117;border:1px solid #2d3748;border-radius:8px;padding:9px 12px;font-size:18px;font-weight:700;color:#e2e8f0;outline:none;text-align:center">
+    </div>
     <div class="emp-list" id="lista-emp-llegada"></div>
     <div class="modal-footer">
       <button class="btn-cancel" onclick="closeModalLlegada()">Cancelar</button>
@@ -415,7 +419,9 @@
   window.openLlegada = function() {
     empSelLlegada = null;
     const now = new Date();
-    document.getElementById('hora-actual').textContent = now.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
+    const hh = String(now.getHours()).padStart(2,'0');
+    const mm = String(now.getMinutes()).padStart(2,'0');
+    document.getElementById('hora-llegada-input').value = `${hh}:${mm}`;
     const lista = document.getElementById('lista-emp-llegada');
     if (!empleados.length) {
       lista.innerHTML = '<p style="color:#64748b;text-align:center;padding:20px">No hay empleados cargados</p>';
@@ -454,12 +460,14 @@
     if (!empSelLlegada) { alert('Seleccioná un empleado'); return; }
     const emp = empleados.find(e => e.id === empSelLlegada);
     if (!emp) return;
+    const horaLlegada = document.getElementById('hora-llegada-input').value;
+    if (!horaLlegada) { alert('Ingresá la hora de llegada'); return; }
     const now = new Date();
-    const horaLlegada = now.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
     const fecha = hoyStr();
     const [hE, mE] = emp.horario.split(':').map(Number);
+    const [hL, mL] = horaLlegada.split(':').map(Number);
     const minHorario = hE * 60 + mE;
-    const minLlegada = now.getHours() * 60 + now.getMinutes();
+    const minLlegada = hL * 60 + mL;
     const diff = minLlegada - minHorario;
     const estado = diff <= emp.tolerancia ? 'puntual' : 'tardanza';
     const minutosTarde = Math.max(0, diff);
