@@ -9,6 +9,7 @@
   body { font-family: 'Segoe UI', sans-serif; background: #0f1117; color: #e2e8f0; display: flex; height: 100vh; overflow: hidden; }
 
   .sidebar { width: 220px; background: #161b27; border-right: 1px solid #1e2535; display: flex; flex-direction: column; padding: 24px 0; flex-shrink: 0; }
+  .sidebar-backdrop { display: none; }
   .logo { padding: 0 20px 28px; font-size: 22px; font-weight: 800; color: #fff; letter-spacing: -0.5px; }
   .logo span { color: #6366f1; }
   .nav-item { display: flex; align-items: center; gap: 12px; padding: 11px 20px; cursor: pointer; color: #94a3b8; font-size: 14px; font-weight: 500; border-left: 3px solid transparent; transition: all .2s; }
@@ -91,6 +92,13 @@
   .filters { display: flex; gap: 10px; margin-bottom: 18px; flex-wrap: wrap; }
   .filters input, .filters select { background: #161b27; border: 1px solid #1e2535; border-radius: 8px; padding: 8px 12px; font-size: 13px; color: #e2e8f0; outline: none; }
   .filters input:focus, .filters select:focus { border-color: #6366f1; }
+  .mobile-topbar { display: none; }
+  .menu-btn { background: #161b27; border: 1px solid #2d3748; color: #fff; width: 42px; height: 42px; border-radius: 10px; font-size: 22px; cursor: pointer; }
+  .mobile-brand { font-size: 20px; font-weight: 800; color: #fff; letter-spacing: -0.4px; }
+  .mobile-brand span { color: #6366f1; }
+  .integration-note { margin-bottom: 18px; padding: 14px 16px; border-radius: 12px; border: 1px solid #1e3a8a; background: linear-gradient(135deg, rgba(13,18,37,.95), rgba(20,32,64,.95)); }
+  .integration-note strong { display: block; margin-bottom: 4px; color: #dbeafe; font-size: 13px; }
+  .integration-note p { font-size: 12px; color: #93c5fd; line-height: 1.45; }
 
   .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 18px; }
   .stat-box { background: #161b27; border: 1px solid #1e2535; border-radius: 12px; padding: 18px; }
@@ -115,11 +123,28 @@
 
   .empty { text-align: center; padding: 36px; color: #475569; }
   select option { background: #161b27; }
+
+  @media (max-width: 768px) {
+    body { display: block; height: auto; min-height: 100vh; overflow-x: hidden; overflow-y: auto; }
+    .mobile-topbar { display: flex; align-items: center; gap: 14px; padding: 16px; position: sticky; top: 0; z-index: 95; background: rgba(15,17,23,.96); backdrop-filter: blur(10px); border-bottom: 1px solid #1e2535; }
+    .sidebar { position: fixed; top: 0; left: 0; height: 100vh; z-index: 110; transform: translateX(-100%); transition: transform .22s ease; box-shadow: 0 18px 50px rgba(0,0,0,.35); }
+    body.sidebar-open .sidebar { transform: translateX(0); }
+    .sidebar-backdrop { position: fixed; inset: 0; background: rgba(2,6,23,.68); z-index: 105; }
+    body.sidebar-open .sidebar-backdrop { display: block; }
+    .main { padding: 18px 14px 24px; overflow: visible; }
+    .dash-grid, .dash-grid-3, .stats-grid, .form-row { grid-template-columns: 1fr; }
+    .quick-box { flex-direction: column; align-items: flex-start; gap: 14px; }
+    .table-wrap { overflow-x: auto; }
+    table { min-width: 760px; }
+    .modal { padding: 20px; width: calc(100vw - 24px); }
+  }
 </style>
 </head>
 <body>
 
-<div class="sidebar">
+<div class="sidebar-backdrop" id="sidebar-backdrop" onclick="closeSidebar()"></div>
+
+<div class="sidebar" id="sidebar">
   <div class="logo">HR<span>Pulse</span></div>
   <div class="nav-item active" onclick="goTo('dashboard')">
     <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
@@ -140,11 +165,19 @@
 </div>
 
 <div class="main">
+  <div class="mobile-topbar">
+    <button class="menu-btn" onclick="toggleSidebar()" aria-label="Abrir menu">☰</button>
+    <div class="mobile-brand">HR<span>Pulse</span></div>
+  </div>
 
   <!-- DASHBOARD -->
   <div id="page-dashboard" class="page active">
     <h1>Dashboard</h1>
     <p class="page-sub" id="dash-fecha"></p>
+    <div class="integration-note">
+      <strong>WhatsApp + Firebase en tiempo real</strong>
+      <p>Si Make.com o Meta Business guardan un registro nuevo en Firestore, este tablero se actualiza solo. Puede entrar solo el nombre y la hora: la app completa el resto con los datos del empleado.</p>
+    </div>
     <div class="alerts" id="dash-alertas"></div>
     <div class="quick-box">
       <div><h2>⚡ Registrar llegada rápida</h2><p>Marcá la llegada de un empleado con la hora actual</p></div>
@@ -269,7 +302,7 @@
 
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-  import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, deleteDoc, query, orderBy } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+  import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyDipT6nsu0rIZmU0eJWgrXl6qMtKoQzjUg",
@@ -284,14 +317,95 @@
   const app = initializeApp(firebaseConfig);
   const db = getFirestore(app);
 
-  let empleados = [], registros = [], empEditId = null, empSelLlegada = null;
+  let empleados = [], registros = [], registrosRaw = [], empEditId = null, empSelLlegada = null;
+
+  function textoPlano(valor='') {
+    return String(valor || '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .trim()
+      .toLowerCase();
+  }
+
+  function buscarEmpleadoPorRegistro(registro) {
+    if (registro.empId) {
+      const porId = empleados.find(e => e.id === registro.empId);
+      if (porId) return porId;
+    }
+    const nombre = textoPlano(registro.nombreEmp || registro.nombre || registro.empleado || registro.employeeName);
+    if (!nombre) return null;
+    return empleados.find(e => textoPlano(e.nombre) === nombre) || null;
+  }
+
+  function obtenerFechaRegistro(registro) {
+    if (registro.fecha) return registro.fecha;
+    if (typeof registro.timestamp === 'string' && registro.timestamp.length >= 10) return registro.timestamp.slice(0, 10);
+    return hoyStr();
+  }
+
+  function obtenerHoraRegistro(registro) {
+    const hora = registro.horaLlegada || registro.hora || registro.horaReal || registro.arrivalTime;
+    if (!hora) return '';
+    return String(hora).slice(0, 5);
+  }
+
+  function enriquecerRegistro(registro) {
+    const emp = buscarEmpleadoPorRegistro(registro);
+    const fecha = obtenerFechaRegistro(registro);
+    const horaLlegada = obtenerHoraRegistro(registro);
+    let minutosTarde = Number.isFinite(registro.minutosTarde) ? registro.minutosTarde : parseInt(registro.minutosTarde, 10);
+    let estado = registro.estado || '';
+
+    if ((!estado || Number.isNaN(minutosTarde)) && emp && horaLlegada && emp.horario) {
+      const [hE, mE] = emp.horario.split(':').map(Number);
+      const [hL, mL] = horaLlegada.split(':').map(Number);
+      const diff = (hL * 60 + mL) - (hE * 60 + mE);
+      minutosTarde = Math.max(0, diff);
+      estado = diff <= Number(emp.tolerancia || 0) ? 'puntual' : 'tardanza';
+    }
+
+    if (Number.isNaN(minutosTarde)) minutosTarde = 0;
+
+    return {
+      ...registro,
+      empId: registro.empId || emp?.id || '',
+      nombreEmp: registro.nombreEmp || registro.nombre || registro.empleado || registro.employeeName || emp?.nombre || 'Sin nombre',
+      sectorEmp: registro.sectorEmp || emp?.sector || '',
+      horario: registro.horario || emp?.horario || '',
+      fecha,
+      horaLlegada,
+      estado: estado || 'puntual',
+      minutosTarde,
+      timestamp: registro.timestamp || new Date(`${fecha}T${horaLlegada || '00:00'}:00`).toISOString(),
+      observaciones: registro.observaciones || registro.origen || registro.source || ''
+    };
+  }
+
+  function actualizarRegistrosDesdeRaw() {
+    registros = registrosRaw
+      .map(enriquecerRegistro)
+      .sort((a, b) => String(b.timestamp || '').localeCompare(String(a.timestamp || '')));
+    renderAll();
+  }
 
   async function cargarDatos() {
     const qe = await getDocs(collection(db, "empleados"));
     empleados = qe.docs.map(d => ({ id: d.id, ...d.data() }));
-    const qr = await getDocs(query(collection(db, "registros"), orderBy("timestamp", "desc")));
-    registros = qr.docs.map(d => ({ id: d.id, ...d.data() }));
-    renderAll();
+    const qr = await getDocs(collection(db, "registros"));
+    registrosRaw = qr.docs.map(d => ({ id: d.id, ...d.data() }));
+    actualizarRegistrosDesdeRaw();
+  }
+
+  function suscribirDatos() {
+    onSnapshot(collection(db, "empleados"), (snapshot) => {
+      empleados = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+      actualizarRegistrosDesdeRaw();
+    });
+
+    onSnapshot(collection(db, "registros"), (snapshot) => {
+      registrosRaw = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+      actualizarRegistrosDesdeRaw();
+    });
   }
 
   function renderAll() { renderDashboard(); renderEmpleados(); renderHistorial(); renderEstadisticas(); renderFiltroEmp(); }
@@ -324,6 +438,15 @@
       if(p===page) document.querySelectorAll('.nav-item')[i].classList.add('active');
     });
     if (page==='estadisticas') renderEstadisticas();
+    closeSidebar();
+  };
+
+  window.toggleSidebar = function() {
+    document.body.classList.toggle('sidebar-open');
+  };
+
+  window.closeSidebar = function() {
+    document.body.classList.remove('sidebar-open');
   };
 
   function renderDashboard() {
@@ -470,12 +593,12 @@
     const data = { nombre:document.getElementById('emp-nombre').value.trim(), sector:document.getElementById('emp-sector').value.trim(), puesto:document.getElementById('emp-puesto').value.trim(), horario:document.getElementById('emp-horario').value, tolerancia:parseInt(document.getElementById('emp-tolerancia').value)||10 };
     if (!data.nombre) { alert('El nombre es obligatorio'); return; }
     empEditId ? await updateDoc(doc(db,'empleados',empEditId),data) : await addDoc(collection(db,'empleados'),data);
-    closeModalEmp(); await cargarDatos();
+    closeModalEmp();
   };
 
   window.eliminarEmp = async function(id) {
     if (!confirm('¿Eliminar este empleado?')) return;
-    await deleteDoc(doc(db,'empleados',id)); await cargarDatos();
+    await deleteDoc(doc(db,'empleados',id));
   };
 
   window.openLlegada = function() {
@@ -517,7 +640,7 @@
     const diff = (hL*60+mL) - (hE*60+mE);
     const estado = diff <= emp.tolerancia ? 'puntual' : 'tardanza';
     await addDoc(collection(db,'registros'),{ empId:emp.id, nombreEmp:emp.nombre, sectorEmp:emp.sector, horario:emp.horario, horaLlegada, fecha, estado, minutosTarde:Math.max(0,diff), observaciones, timestamp:new Date().toISOString() });
-    closeModalLlegada(); await cargarDatos();
+    closeModalLlegada();
   };
 
   function renderFiltroEmp() {
@@ -644,7 +767,8 @@
     `;
   };
 
-  cargarDatos();
+  await cargarDatos();
+  suscribirDatos();
 </script>
 </body>
 </html>
